@@ -5,18 +5,23 @@
 
 ## Dependencies
 - **ffmpeg**: (v6.0+ recommended)
+- **whisper-cpp**: cpp implementation 
+- **GGML Model**: gglm-base.bin (Stored in ~/.cache/whisper-models/)
 - **Font Path**: `./public/font/Coolvetica.ttf` (Must be resolved to absolute path in script)
 
 ## Technical Implementation Logic
 1.  **Seek (Temporal)**: If `--clip` is provided, apply `-ss` and `-to` as **input parameters** (before `-i`) to enable fast seeking.
-2.  **Crop (Spatial)**: If `--crop` is passed, apply the `crop` filter first to reduce pixel data.
-3.  **Fit (Standardization)**: Scale result to fit within 1080x1920. Use `force_original_aspect_ratio=decrease` to maintain source ratio.
-4.  **Pad (Canvas)**: Apply `pad` to create the final 9:16 black background and center the video.
-5.  **Branding (Watermark)**: Apply `drawtext` as the final filter so it sits on top of the padded canvas.
+2.  **Audio Extraction**: Extract mono 16kHz PCM audio (pcm_s16le) as a temporary .wav for transcription.
+3.  **Transcription**: Generate .srt using whisper-cpp. Output name must be fixed to allow ffmpeg to target the file.
+4.  **Crop (Spatial)**: If `--crop` is passed, apply the `crop` filter first to reduce pixel data.
+5.  **Fit (Standardization)**: Scale result to fit within 1080x1920. Use `force_original_aspect_ratio=decrease` to maintain source ratio.
+6.  **Pad (Canvas)**: Apply `pad` to create the final 9:16 black background and center the video.
+7.  **Branding (Watermark)**: Apply `drawtext` as the final filter so it sits on top of the padded canvas.
 
 ## Filter Specifications
 - **Scaling**: `scale=1080:1920:force_original_aspect_ratio=decrease`
 - **Padding**: `pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black`
+- **Subtitles**: subtitles='file.srt':force_style='PrimaryColour=&H00FFFF,OutlineColour=&H000000,BorderStyle=1,Outline=2,Fontname=Coolvetica,Fontsize=18'
 - **Watermark**: `drawtext=text='jee':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2`
 
 ## Performance & Quality
@@ -26,12 +31,11 @@
 - **Audio**: `-c:a aac -b:a 128k`
 
 ## Result
-1. **Resolution**: 1080x1920 (Fixed)
-2. **Aspect Ratio**: 9:16
-3. **Background**: Black padding for non-matching ratios
-4. **Branding**: Hardcoded "jee" at 50% opacity
-5. **Save Location**: `./result/` (Auto-created if missing)
-6. **Naming Convention**: `clip-[original_filename]`
+1. **Resolution**: 1080x1920 (Fixed 9:16).
+2. **Dynamic Subtitle**: Only present if --subtitle is passed; styled for maximum readability.
+3. **Background**: Black padding for non-matching ratios.
+4. **Save Location**: `./result/` (Auto-created if missing).
+5. **Naming Convention**: `clip-[original_filename]`.
 
 ## Options
 - **--crop [left|center|right]**: Horizontal 50% slice logic. 
@@ -41,3 +45,4 @@
 - **--clip "[start] [end]"**: Temporal clipping. 
   - If omitted: Process entire video.
   - Usage: `--clip "00:00:50 00:01:00"`
+- **--subtitle**: Trigger whisper-cpp transcription pipeline
