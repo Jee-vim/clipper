@@ -12,9 +12,12 @@ mkdir -p "$RESULT_DIR"
 
 # Variables
 INPUT=""
+INPUT_IS_URL=false
+START=""
+END=""
 SEEK_ARGS=""
 CROP_FILTER=""
-WATERMARK="jee"
+WATERMARK="obrolan_clip"
 USE_SUBTITLES=false
 
 # Argument Parsing
@@ -42,25 +45,69 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            INPUT=$(realpath "$1")
+            INPUT="$1"
             shift 1
             ;;
     esac
 done
 
-if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
-    echo "[ERROR] Valid input file required."
+# URL Detection
+if [[ "$INPUT" =~ ^https?:// ]]; then
+    INPUT_IS_URL=true
+elif [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
+    echo "[ERROR] Valid input file or URL required."
     exit 1
+else
+    INPUT=$(realpath "$INPUT")
+fi
+
+# Download URL to temp file if needed
+if [ "$INPUT_IS_URL" = true ]; then
+    TEMP_INPUT="$RESULT_DIR/tmp_input_$(date +%s).mp4"
+    if [[ "$INPUT" =~ youtube\.com|youtu\.be ]]; then
+        if ! command -v yt-dlp &> /dev/null; then
+            echo "[ERROR] yt-dlp not found. Install: pip install yt-dlp"
+            exit 1
+        fi
+        # Use download-sections to get only the clip range
+        YTDLP_RANGE=""
+        if [ -n "$START" ] && [ -n "$END" ]; then
+            YTDLP_RANGE="--download-sections *${START}-${END}"
+            SEEK_ARGS=""
+        fi
+        echo "[INFO] Downloading video..."
+        yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE -o "$TEMP_INPUT" "$INPUT" || {
+            echo "[ERROR] Failed to download YouTube video"
+            exit 1
+        }
+    else
+        echo "[INFO] Downloading input..."
+        curl -fsSL -o "$TEMP_INPUT" "$INPUT" || {
+            echo "[ERROR] Failed to download URL"
+            exit 1
+        }
+    fi
+    INPUT="$TEMP_INPUT"
+    RAW_FILENAME="${INPUT##*/}"
+else
+    RAW_FILENAME=$(basename "$INPUT")
 fi
 
 # Naming Logic
-RAW_FILENAME=$(basename "$INPUT")
 CLEAN_FILENAME="${RAW_FILENAME// /-}"
 OUTPUT_FILE="clip-$CLEAN_FILENAME"
 FULL_OUTPUT_PATH="$RESULT_DIR/$OUTPUT_FILE"
 TEMP_AUDIO="$RESULT_DIR/tmp_audio.wav"
 SRT_BASE="$RESULT_DIR/tmp_subs"
 SRT_FILE="$SRT_BASE.srt"
+
+# Cleanup temp files on exit
+cleanup() {
+    [[ -f "$TEMP_INPUT" ]] && rm "$TEMP_INPUT"
+    [[ -f "$TEMP_AUDIO" ]] && rm "$TEMP_AUDIO"
+    [[ -f "$SRT_FILE" ]] && rm "$SRT_FILE"
+}
+trap cleanup EXIT
 
 # Transcription Logic
 SUBTITLE_FILTER=""
@@ -78,7 +125,7 @@ if [ "$USE_SUBTITLES" = true ]; then
     fi
 fi
 
-echo "[INFO] Generating: $OUTPUT_FILE"
+echo "[INFO] Generating video..."
 
 # FFmpeg Execution
 ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
@@ -86,13 +133,8 @@ ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
     -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
     -c:a aac -b:a 128k "$FULL_OUTPUT_PATH"
 
-# Cleanup
 if [ $? -eq 0 ]; then
     echo "[INFO] Successfully generated: $OUTPUT_FILE"
-    [[ -f "$TEMP_AUDIO" ]] && rm "$TEMP_AUDIO"
-    [[ -f "$SRT_FILE" ]] && rm "$SRT_FILE"
 else
     echo "[ERROR] Failed to generate clip"
-    [[ -f "$TEMP_AUDIO" ]] && rm "$TEMP_AUDIO"
-    [[ -f "$SRT_FILE" ]] && rm "$SRT_FILE"
 fi
