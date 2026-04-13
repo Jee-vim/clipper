@@ -10,6 +10,23 @@ MODEL_PATH="$HOME/.cache/whisper-models/ggml-medium.bin"
 
 mkdir -p "$RESULT_DIR"
 
+# Load environment variables (optional)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+fi
+
+# Proxy support (optional) - use random proxy if multiple provided
+YTDLP_PROXY=""
+CURL_PROXY=""
+if [ -n "$PROXIES" ]; then
+    # Pick random if has multi proxy
+    IFS=',' read -ra PROXY_ARRAY <<< "$PROXIES"
+    RANDOM_INDEX=$((RANDOM % ${#PROXY_ARRAY[@]}))
+    SELECTED_PROXY="${PROXY_ARRAY[$RANDOM_INDEX]}"
+    YTDLP_PROXY="--proxy \"$SELECTED_PROXY\""
+    CURL_PROXY="-x \"$SELECTED_PROXY\""
+fi
+
 # Variables
 INPUT=""
 INPUT_IS_URL=false
@@ -76,13 +93,13 @@ if [ "$INPUT_IS_URL" = true ]; then
             SEEK_ARGS=""
         fi
         echo "[INFO] Downloading video..."
-        yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE -o "$TEMP_INPUT" "$INPUT" || {
+        yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE $YTDLP_PROXY -o "$TEMP_INPUT" "$INPUT" || {
             echo "[ERROR] Failed to download YouTube video"
             exit 1
         }
     else
         echo "[INFO] Downloading input..."
-        curl -fsSL -o "$TEMP_INPUT" "$INPUT" || {
+        curl -fsSL $CURL_PROXY -o "$TEMP_INPUT" "$INPUT" || {
             echo "[ERROR] Failed to download URL"
             exit 1
         }
