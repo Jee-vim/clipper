@@ -70,8 +70,9 @@ if [ "$USE_SUBTITLES" = true ]; then
     elif [ ! -f "$MODEL_PATH" ]; then
         echo "[WARN] GGML model not found at $MODEL_PATH. Skipping subtitles."
     else
-        echo "[INFO] Extracting audio and transcribing..."
+        echo "[INFO] Extracting audio..."
         ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" -ar 16000 -ac 1 -c:a pcm_s16le "$TEMP_AUDIO"
+        echo "[INFO] Transcribing..."
         whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -of "$SRT_BASE" > /dev/null 2>&1
         SUBTITLE_FILTER="subtitles='$SRT_FILE':force_style='PrimaryColour=&H00FFFF,OutlineColour=&H000000,BorderStyle=1,Outline=2,Fontname=Coolvetica,Fontsize=18',"
     fi
