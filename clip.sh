@@ -68,6 +68,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Telegram function
+send_telegram() {
+    local video_path="$1"
+    if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+        return 1
+    fi
+    curl -fsSL -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendVideo" -F chat_id="$TELEGRAM_CHAT_ID" -F video="@$video_path" > /dev/null 2>&1
+}
+
 # URL Detection
 if [[ "$INPUT" =~ ^https?:// ]]; then
     INPUT_IS_URL=true
@@ -83,7 +92,7 @@ if [ "$INPUT_IS_URL" = true ]; then
     TEMP_INPUT="$RESULT_DIR/tmp_input_$(date +%s).mp4"
     if [[ "$INPUT" =~ youtube\.com|youtu\.be ]]; then
         if ! command -v yt-dlp &> /dev/null; then
-            echo "[ERROR] yt-dlp not found. Install: pip install yt-dlp"
+            echo "[ERROR] yt-dlp not found. Install: yt-dlp"
             exit 1
         fi
         # Use download-sections to get only the clip range
@@ -152,6 +161,7 @@ ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
 
 if [ $? -eq 0 ]; then
     echo "[INFO] Successfully generated: $OUTPUT_FILE"
+    send_telegram "$FULL_OUTPUT_PATH"
 else
     echo "[ERROR] Failed to generate clip"
 fi

@@ -15,6 +15,16 @@
 - **URL**: `https://example.com/video.mp4`
 - **YouTube**: `https://youtu.be/XXXXX` or `https://www.youtube.com/watch?v=XXXXX`
 
+## Configuration (`.env` file)
+```bash
+# Proxy (optional) - comma-separated, random selection
+PROXIES=http://proxy1:8080,http://proxy2:8080
+
+# Telegram (optional) - auto-sends if configured
+TELEGRAM_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+```
+
 ## Technical Implementation Logic
 1.  **URL Detection**: If input starts with `http://` or `https://`, treat as URL.
 2.  **Download**:
@@ -28,6 +38,7 @@
 7.  **Fit (Standardization)**: Scale result to fit within 1080x1920. Use `force_original_aspect_ratio=decrease` to maintain source ratio.
 8.  **Pad (Canvas)**: Apply `pad` to create the final 9:16 black background and center the video.
 9.  **Branding (Watermark)**: Apply `drawtext` as the final filter so it sits on top of the padded canvas.
+10. **Telegram Upload**: If `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` are set in `.env`, auto-send the generated video.
 
 ## Filter Specifications
 - **Scaling**: `scale=1080:1920:force_original_aspect_ratio=decrease`
@@ -48,6 +59,7 @@
 3. **Background**: Black padding for non-matching ratios.
 4. **Save Location**: `./result/` (Auto-created if missing).
 5. **Naming Convention**: `clip-[original_filename]`.
+6. **Telegram**: Auto-sends to configured bot if `.env` is set.
 
 ## Options
 - **--crop [left|center|right]**: Horizontal 50% slice logic. 
