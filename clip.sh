@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 
-echo "[INFO] Initializing video processing..." 
+echo "[INFO] Initializing video processing..."
 
 # Resolve absolute paths
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 RESULT_DIR="$SCRIPT_DIR/result"
 FONT_PATH="$SCRIPT_DIR/public/font/Coolvetica.ttf"
-
-# Ensure result directory exists
 mkdir -p "$RESULT_DIR"
 
 # Variables
 INPUT=""
 SEEK_ARGS=""
 CROP_FILTER=""
+WATERMARK="jee"
 
 # Argument Parsing
 while [[ $# -gt 0 ]]; do
@@ -31,6 +30,10 @@ while [[ $# -gt 0 ]]; do
             esac
             shift 2
             ;;
+        --watermark)
+            WATERMARK="$2"
+            shift 2
+            ;;
         *)
             INPUT="$1"
             shift 1
@@ -43,12 +46,22 @@ if [[ -z "$INPUT" ]]; then
     exit 1
 fi
 
-OUTPUT="$RESULT_DIR/clip-$(basename "$INPUT")"
+# Naming Logic
+RAW_FILENAME=$(basename "$INPUT")
+CLEAN_FILENAME="${RAW_FILENAME// /-}"
+OUTPUT_FILE="clip-$CLEAN_FILENAME"
+FULL_OUTPUT_PATH="$RESULT_DIR/$OUTPUT_FILE"
+
+echo "[INFO] Generating: $OUTPUT_FILE"
 
 # FFmpeg Execution
-ffmpeg -y $SEEK_ARGS -i "$INPUT" \
-    -vf "${CROP_FILTER}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,drawtext=text='jee':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH'" \
+ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
+    -vf "${CROP_FILTER}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH'" \
     -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
-    -c:a aac -b:a 128k "$OUTPUT"
+    -c:a aac -b:a 128k "$FULL_OUTPUT_PATH" > /dev/null 2>&1
 
-echo "[SUCCESS] Process finished. Output: $OUTPUT"
+if [ $? -eq 0 ]; then
+    echo "[INFO] Successfully generated: $OUTPUT_FILE"
+else
+    echo "[ERROR] Failed to generate clip"
+fi
