@@ -45,3 +45,6 @@ Video processing CLI tool for creating vertical (9:16) clips with watermark and 
 ## Output
 
 Generated videos are saved to `result/` directory with `clip-` prefix.
+
+## TODO
+- Make the subitle show word by word and only show while actualy talk
