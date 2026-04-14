@@ -10,12 +10,10 @@ MODEL_PATH="$HOME/.cache/whisper-models/ggml-medium.bin"
 
 mkdir -p "$RESULT_DIR"
 
-# Load environment variables (optional)
 if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
 
-# Proxy support (optional) - use random proxy if multiple provided
 YTDLP_PROXY=""
 CURL_PROXY=""
 if [ -n "$PROXIES" ]; then
@@ -68,7 +66,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Telegram function
 send_telegram() {
     local video_path="$1"
     if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
@@ -153,7 +150,6 @@ fi
 
 echo "[INFO] Generating video..."
 
-# FFmpeg Execution
 ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
     -vf "${CROP_FILTER}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,${SUBTITLE_FILTER}drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH'" \
     -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \

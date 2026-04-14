@@ -6,7 +6,7 @@ Video processing CLI tool for creating vertical (9:16) clips with watermark and 
 
 ```bash
 ffmpeg
-yt-dlp (for YouTube URLs) - pip install yt-dlp
+yt-dlp (optional, for YouTube URLs)
 whisper-cli (optional, for subtitles) - https://github.com/ggerganov/whisper.cpp
 ```
 
