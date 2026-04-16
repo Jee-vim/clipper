@@ -238,13 +238,9 @@ with open(sys.argv[2], 'w', encoding='utf-8') as f:
                 spoken = line_words[:i+1]
                 upcoming = line_words[i+1:]
                 
-                # Build colored text: highlighted (yellow) + faded (gray)
-                if spoken and upcoming:
-                    text_with_highlight = f"{{\\1c&H00FFFF&}}{' '.join([w.get('word','').strip() for w in spoken])} {{\\1c&H888888&}}{' '.join([w.get('word','').strip() for w in upcoming])}"
-                elif spoken:
-                    text_with_highlight = f"{{\\1c&H00FFFF&}}{' '.join([w.get('word','').strip() for w in spoken])}"
-                else:
-                    text_with_highlight = f"{{\\1c&H888888&}}{' '.join([w.get('word','').strip() for w in upcoming])}"
+                # Build text: only show current highlighted word (hide upcoming)
+                current_word = line_words[i].get('word', '').strip()
+                text_with_highlight = f"{{\\1c&H00FFFF&}}{current_word}"
 
                 text_with_highlight = text_with_highlight.replace(',', '\\,')
                 
