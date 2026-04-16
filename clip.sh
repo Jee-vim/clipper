@@ -19,8 +19,8 @@ if [ -n "$PROXIES" ]; then
     IFS=',' read -ra PROXY_ARRAY <<< "$PROXIES"
     RANDOM_INDEX=$((RANDOM % ${#PROXY_ARRAY[@]}))
     SELECTED_PROXY="${PROXY_ARRAY[$RANDOM_INDEX]}"
-    YTDLP_PROXY="--proxy \"$SELECTED_PROXY\""
-    CURL_PROXY="-x \"$SELECTED_PROXY\""
+    YTDLP_PROXY="--proxy $SELECTED_PROXY"
+    CURL_PROXY="-x $SELECTED_PROXY"
 fi
 
 # Variables
@@ -43,9 +43,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --crop)
             case $2 in
-                left)   CROP_FILTER="crop=iw*0.5:ih:0:0," ;;
-                center) CROP_FILTER="crop=iw*0.5:ih:iw*0.25:0," ;;
-                right)  CROP_FILTER="crop=iw*0.5:ih:iw*0.5:0," ;;
+                left)   CROP_FILTER="crop=iw*0.5:ih:0:0" ;;
+                center) CROP_FILTER="crop=iw*0.5:ih:iw*0.25:0" ;;
+                right)  CROP_FILTER="crop=iw*0.5:ih:iw*0.5:0" ;;
             esac
             shift 2
             ;;
@@ -142,8 +142,11 @@ if [ "$USE_SUBTITLES" = true ]; then
         echo "[WARN] GGML model not found at $MODEL_PATH. Skipping subtitles."
     else
         echo "[INFO] Extracting audio and Transcribing..."
-        ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" -ar 16000 -ac 1 -c:a pcm_s16le "$TEMP_AUDIO"
-        
+        if ! ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" -ar 16000 -ac 1 -c:a pcm_s16le "$TEMP_AUDIO"; then
+            echo "[ERROR] Failed to extract audio"
+            exit 1
+        fi
+
         # Get full JSON with word-level timestamps
         JSON_FILE="$SRT_BASE.json"
         whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -ojf -of "$SRT_BASE" -np > /dev/null 2>&1
@@ -158,7 +161,7 @@ def format_ts(sec):
     h = int(sec // 3600)
     m = int((sec % 3600) // 60)
     s = sec % 60
-    return f"{h}:{m:02d}:{s:05.2f}"
+    return f"{h:02d}:{m:02d}:{s:05.2f}"
 
 with open(sys.argv[1], 'r', encoding='utf-8') as f:
     data = json.load(f)
@@ -250,7 +253,7 @@ PYEOF
             
             rm -f "$JSON_FILE"
             if [ -f "$ASS_FILE" ]; then
-                SUBTITLE_FILTER="subtitles='$ASS_FILE':force_style='Fontname=DejaVuSans-Bold,Fontsize=80,PrimaryColour=&H00FFFF00',"
+                SUBTITLE_FILTER="subtitles='$ASS_FILE':force_style='Fontname=DejaVuSans-Bold,Fontsize=80,PrimaryColour=&H00FFFF00'"
             fi
         else
             echo "[WARN] JSON file not created"
@@ -258,10 +261,18 @@ PYEOF
     fi
 fi
 
+# Build video filters array
+VF_FILTERS=()
+[ -n "$CROP_FILTER" ] && VF_FILTERS+=("$CROP_FILTER")
+VF_FILTERS+=("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black")
+VF_FILTERS+=("drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH'")
+[ -n "$SUBTITLE_FILTER" ] && VF_FILTERS+=("$SUBTITLE_FILTER")
+
 echo "[INFO] Generating video..."
 
+IFS=',' eval 'VF_ARG="${VF_FILTERS[*]}"'
 ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
-    -vf "${CROP_FILTER}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH',${SUBTITLE_FILTER}" \
+    -vf "$VF_ARG" \
     -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
     -c:a aac -b:a 128k "$FULL_OUTPUT_PATH"
 
