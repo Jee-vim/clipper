@@ -175,7 +175,7 @@ Timer: 100.0.0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,DejaVuSans-Bold,80,&H00FFFF00,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,0,2,10,10,40,1
+Style: Default,DejaVuSans-Bold,80,&H00FFFF00,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,0,5,10,10,-960,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -254,7 +254,7 @@ PYEOF
             
             rm -f "$JSON_FILE"
             if [ -f "$ASS_FILE" ]; then
-                SUBTITLE_FILTER="subtitles='$ASS_FILE':force_style='Fontname=DejaVuSans-Bold,Fontsize=80,PrimaryColour=&H00FFFF00,Alignment=2,MarginV=40',"
+                SUBTITLE_FILTER="subtitles='$ASS_FILE':force_style='Fontname=DejaVuSans-Bold,Fontsize=80,PrimaryColour=&H00FFFF00',"
             fi
         else
             echo "[WARN] JSON file not created"
