@@ -93,8 +93,12 @@ if [ "$INPUT_IS_URL" = true ]; then
         # Use download-sections to get only the clip range
         YTDLP_RANGE=""
         if [ -n "$START" ] && [ -n "$END" ]; then
-            YTDLP_RANGE="--download-sections *${START}-${END}"
-            SEEK_ARGS=""
+            # Only use --download-sections if yt-dlp supports it
+            if yt-dlp --help 2>&1 | grep -q "download-sections"; then
+                YTDLP_RANGE="--download-sections *${START}-${END}"
+                SEEK_ARGS=""
+            fi
+            # If unsupported, keep SEEK_ARGS for ffmpeg to clip
         fi
         echo "[INFO] Downloading video..."
         yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE $YTDLP_PROXY -o "$TEMP_INPUT" "$INPUT" || {
@@ -149,7 +153,10 @@ if [ "$USE_SUBTITLES" = true ]; then
 
         # Get full JSON with word-level timestamps
         JSON_FILE="$SRT_BASE.json"
-        whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -ojf -of "$SRT_BASE" -np > /dev/null 2>&1
+        WHISPER_LOG="$SCRIPT_DIR/whisper.log"
+        if ! whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -ojf -of "$SRT_BASE" -np > "$WHISPER_LOG" 2>&1; then
+            echo "[WARN] Whisper transcription failed, check $WHISPER_LOG"
+        fi
 
         # Generate ASS subtitle
         if [ -f "$JSON_FILE" ]; then
@@ -182,7 +189,7 @@ ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
 
 if [ $? -eq 0 ]; then
     echo "[INFO] Successfully generated: $OUTPUT_FILE"
-    # send_telegram "$FULL_OUTPUT_PATH"
+    send_telegram "$FULL_OUTPUT_PATH"
 else
     echo "[ERROR] Failed to generate clip"
 fi
