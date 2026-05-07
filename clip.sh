@@ -12,16 +12,14 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
 
-YTDLP_PROXY=""
-CURL_PROXY=""
-if [ -n "$PROXIES" ]; then
-    # Pick random if has multi proxy
+get_random_proxy() {
+    if [ -z "$PROXIES" ]; then
+        return 0
+    fi
     IFS=',' read -ra PROXY_ARRAY <<< "$PROXIES"
     RANDOM_INDEX=$((RANDOM % ${#PROXY_ARRAY[@]}))
-    SELECTED_PROXY="${PROXY_ARRAY[$RANDOM_INDEX]}"
-    YTDLP_PROXY="--proxy $SELECTED_PROXY"
-    CURL_PROXY="-x $SELECTED_PROXY"
-fi
+    echo "${PROXY_ARRAY[$RANDOM_INDEX]}"
+}
 
 # Variables
 INPUT=""
@@ -101,13 +99,23 @@ if [ "$INPUT_IS_URL" = true ]; then
             # If unsupported, keep SEEK_ARGS for ffmpeg to clip
         fi
         echo "[INFO] Downloading video..."
-        yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE $YTDLP_PROXY -o "$TEMP_INPUT" "$INPUT" || {
+        PROXY=$(get_random_proxy)
+        YTDLP_PROXY_ARG=""
+        if [ -n "$PROXY" ]; then
+            YTDLP_PROXY_ARG="--proxy $PROXY"
+        fi
+        yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TEMP_INPUT" "$INPUT" || {
             echo "[ERROR] Failed to download YouTube video"
             exit 1
         }
     else
         echo "[INFO] Downloading input..."
-        curl -fsSL $CURL_PROXY -o "$TEMP_INPUT" "$INPUT" || {
+        PROXY=$(get_random_proxy)
+        CURL_PROXY_ARG=""
+        if [ -n "$PROXY" ]; then
+            CURL_PROXY_ARG="-x $PROXY"
+        fi
+        curl -fsSL $CURL_PROXY_ARG -o "$TEMP_INPUT" "$INPUT" || {
             echo "[ERROR] Failed to download URL"
             exit 1
         }
