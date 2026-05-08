@@ -189,7 +189,8 @@ VF_FILTERS+=("drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw
 
 echo "[INFO] Generating video..."
 
-IFS=',' eval 'VF_ARG="${VF_FILTERS[*]}"'
+printf -v VF_ARG '%s,' "${VF_FILTERS[@]}"
+VF_ARG="${VF_ARG%,}"
 ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
     -vf "$VF_ARG" \
     -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
