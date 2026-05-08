@@ -21,6 +21,20 @@ get_random_proxy() {
     echo "${PROXY_ARRAY[$RANDOM_INDEX]}"
 }
 
+validate_time() {
+    local time=$1
+    if [[ "$time" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        return 0
+    elif [[ "$time" =~ ^[0-9]{1,2}:[0-9]{1,2}$ ]]; then
+        return 0
+    elif [[ "$time" =~ ^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}(\.[0-9]+)?$ ]]; then
+        return 0
+    else
+        echo "[ERROR] Invalid time format: $time. Use seconds (e.g., 30) or HH:MM:SS (e.g., 05:58)"
+        exit 1
+    fi
+}
+
 # Variables
 INPUT=""
 INPUT_IS_URL=false
@@ -36,6 +50,8 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --clip)
             read -r START END <<< "$2"
+            validate_time "$START"
+            validate_time "$END"
             SEEK_ARGS="-ss $START -to $END"
             shift 2
             ;;
@@ -198,7 +214,11 @@ ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" \
 
 if [ $? -eq 0 ]; then
     echo "[INFO] Successfully generated: $OUTPUT_FILE"
-    send_telegram "$FULL_OUTPUT_PATH"
+    if send_telegram "$FULL_OUTPUT_PATH"; then
+        echo "[INFO] Sent to Telegram"
+    else
+        echo "[WARN] Failed to send to Telegram"
+    fi
 else
     echo "[ERROR] Failed to generate clip"
 fi
