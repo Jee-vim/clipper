@@ -16,7 +16,7 @@ Video processing CLI tool for creating vertical (9:16) clips with watermark and 
 | `--crop left\|center\|right` | Crop horizontal position | `--crop left` |
 | `--subtitle` | Generate auto subtitles | `--subtitle` |
 | `--watermark "TEXT"` | Custom watermark (default: "obrolan_clip") | `--watermark "mytext"` |
-| `--bg-image PATH` | Image as background instead of black | `--bg-image public/minecraft.jpg` |
+| `--bg PATH` | Image/video as background instead of black | `--bg public/bg.jpg` |
 
 ## Examples
 
@@ -42,8 +42,8 @@ Video processing CLI tool for creating vertical (9:16) clips with watermark and 
 # With crop, subtitles, and custom watermark
 ./clip.sh --clip "0 30" --crop center --subtitle --watermark "mytext" video.mp4
 
-# With background image
-./clip.sh --bg-image public/minecraft.jpg video.mp4
+# With background (image or video)
+./clip.sh --bg public/minecraft.jpg video.mp4
 
 ## Output
 

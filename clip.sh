@@ -3,7 +3,7 @@
 # Resolve absolute paths
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 RESULT_DIR="$SCRIPT_DIR/result"
-FONT_PATH="$SCRIPT_DIR/public/font/Coolvetica.ttf"
+FONT_PATH="$SCRIPT_DIR/public/font/coolvetica.ttf"
 MODEL_PATH="$HOME/.cache/whisper-models/ggml-medium.bin"
 
 mkdir -p "$RESULT_DIR"
@@ -44,7 +44,7 @@ SEEK_ARGS=""
 CROP_FILTER=""
 WATERMARK="obrolan_clip"
 USE_SUBTITLES=false
-BG_IMAGE=""
+BG=""
 
 # Argument Parsing
 while [[ $# -gt 0 ]]; do
@@ -72,8 +72,8 @@ while [[ $# -gt 0 ]]; do
             WATERMARK="$2"
             shift 2
             ;;
-        --bg-image)
-            BG_IMAGE="$2"
+        --bg)
+            BG="$2"
             shift 2
             ;;
         *)
@@ -203,26 +203,37 @@ fi
 
 echo "[INFO] Generating video..."
 
-if [ -n "$BG_IMAGE" ]; then
-    # Use image as background instead of solid black
-    BG_IMAGE=$(realpath "$BG_IMAGE")
-    echo "[INFO] Using background image: $BG_IMAGE"
+if [ -n "$BG" ]; then
+    # Use media as background instead of solid black
+    BG=$(realpath "$BG")
+    echo "[INFO] Using background: $BG"
+
+    # Detect if bg is video (needs loop) or image (single frame)
+    BG_LOOP=""
+    OVERLAY_SHORTEST=""
+    case "${BG,,}" in
+        *.mp4|*.mov|*.avi|*.mkv|*.webm|*.m4v)
+            BG_LOOP="-stream_loop -1"
+            OVERLAY_SHORTEST=":shortest=1"
+            echo "[INFO] Background is video — looping enabled"
+            ;;
+    esac
 
     # Video processing: crop (optional) + scale to fit
     VIDEO_CHAIN="[0:v]"
     [ -n "$CROP_FILTER" ] && VIDEO_CHAIN+="$CROP_FILTER,"
     VIDEO_CHAIN+="scale=1080:1920:force_original_aspect_ratio=decrease[fg]"
 
-    # Background: scale image to fill frame (cover mode for horizontal→vertical)
+    # Background: scale to fill frame (cover mode for horizontal→vertical)
     BG_CHAIN="[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg]"
 
     # Overlay + text + subtitles
-    POST_CHAIN="[bg][fg]overlay=(W-w)/2:(H-h)/2"
+    POST_CHAIN="[bg][fg]overlay=(W-w)/2:(H-h)/2$OVERLAY_SHORTEST"
     POST_CHAIN+=",drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH'"
     [ -n "$SUBTITLE_FILTER" ] && POST_CHAIN+=",$SUBTITLE_FILTER"
     POST_CHAIN+="[vout]"
 
-    ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" -i "$BG_IMAGE" \
+    ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" $BG_LOOP -i "$BG" \
         -filter_complex "$VIDEO_CHAIN;$BG_CHAIN;$POST_CHAIN" \
         -map '[vout]' -map 0:a? -c:a aac -b:a 128k \
         -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
