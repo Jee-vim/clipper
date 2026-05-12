@@ -44,6 +44,7 @@ SEEK_ARGS=""
 CROP_FILTER=""
 WATERMARK="obrolan_clip"
 USE_SUBTITLES=false
+CUSTOM_TITLE=""
 BG=""
 
 # Argument Parsing
@@ -64,8 +65,21 @@ while [[ $# -gt 0 ]]; do
             esac
             shift 2
             ;;
-        --subtitle)
+        --hardsub)
             USE_SUBTITLES=true
+            shift 1
+            ;;
+        --subtitle)
+            echo "[WARN] --subtitle is deprecated, use --hardsub"
+            USE_SUBTITLES=true
+            shift 1
+            ;;        
+        --title)
+            CUSTOM_TITLE="$2"
+            shift 2
+            ;;
+        --title=*)
+            CUSTOM_TITLE="${1#*=}"
             shift 1
             ;;
         --watermark)
@@ -148,8 +162,13 @@ else
 fi
 
 # Naming Logic
-CLEAN_FILENAME="${RAW_FILENAME// /-}"
-OUTPUT_FILE="clip-$CLEAN_FILENAME"
+if [ -n "$CUSTOM_TITLE" ]; then
+    CLEAN_FILENAME=$(echo "$CUSTOM_TITLE" | sed 's/[^a-zA-Z0-9._-]/_/g')
+    OUTPUT_FILE="clip-$CLEAN_FILENAME.mp4"
+else
+    CLEAN_FILENAME="${RAW_FILENAME// /-}"
+    OUTPUT_FILE="clip-$CLEAN_FILENAME"
+fi
 FULL_OUTPUT_PATH="$RESULT_DIR/$OUTPUT_FILE"
 TEMP_AUDIO="$RESULT_DIR/tmp_audio.wav"
 SRT_BASE="$RESULT_DIR/tmp_subs"
