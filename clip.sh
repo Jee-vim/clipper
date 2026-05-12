@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 # Resolve absolute paths
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
@@ -7,10 +8,6 @@ FONT_PATH="$SCRIPT_DIR/public/font/coolvetica.ttf"
 MODEL_PATH="$HOME/.cache/whisper-models/ggml-medium.bin"
 
 mkdir -p "$RESULT_DIR"
-
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
-fi
 
 get_random_proxy() {
     if [ -z "$PROXIES" ]; then
@@ -46,6 +43,14 @@ WATERMARK="obrolan_clip"
 USE_SUBTITLES=false
 CUSTOM_TITLE=""
 BG=""
+TEMP_INPUT=""
+PROXIES=""
+TELEGRAM_TOKEN=""
+TELEGRAM_CHAT_ID=""
+
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+fi
 
 # Argument Parsing
 while [[ $# -gt 0 ]]; do
@@ -177,11 +182,11 @@ ASS_FILE="$SRT_BASE.ass"
 
 # Cleanup temp files on exit
 cleanup() {
-    [[ -f "$TEMP_INPUT" ]] && rm "$TEMP_INPUT"
-    [[ -f "$TEMP_AUDIO" ]] && rm "$TEMP_AUDIO"
-    [[ -f "$SRT_FILE" ]] && rm "$SRT_FILE"
-    [[ -f "$ASS_FILE" ]] && rm "$ASS_FILE"
-    [[ -f "$SRT_BASE.json" ]] && rm "$SRT_BASE.json"
+    [[ -f "$TEMP_INPUT" ]] && rm "$TEMP_INPUT" || true
+    [[ -f "$TEMP_AUDIO" ]] && rm "$TEMP_AUDIO" || true
+    [[ -f "$SRT_FILE" ]] && rm "$SRT_FILE" || true
+    [[ -f "$ASS_FILE" ]] && rm "$ASS_FILE" || true
+    [[ -f "$SRT_BASE.json" ]] && rm "$SRT_BASE.json" || true
 }
 trap cleanup EXIT
 
@@ -224,6 +229,7 @@ fi
 
 echo "[INFO] Generating video..."
 
+ffmpeg_status=0
 if [ -n "$BG" ]; then
     # Use media as background instead of solid black
     BG=$(realpath "$BG")
@@ -258,7 +264,7 @@ if [ -n "$BG" ]; then
         -filter_complex "$VIDEO_CHAIN;$BG_CHAIN;$POST_CHAIN" \
         -map '[vout]' -map 0:a? -c:a aac -b:a 128k \
         -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
-        "$FULL_OUTPUT_PATH"
+        "$FULL_OUTPUT_PATH" || ffmpeg_status=$?
 else
     # Original: black background via pad
     VF_FILTERS=()
@@ -273,10 +279,10 @@ else
         -vf "$VF_ARG" \
         -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
         -c:a aac -b:a 128k \
-        "$FULL_OUTPUT_PATH"
+        "$FULL_OUTPUT_PATH" || ffmpeg_status=$?
 fi
 
-if [ $? -eq 0 ]; then
+if [ $ffmpeg_status -eq 0 ]; then
     echo "[INFO] Successfully generated: $OUTPUT_FILE"
     if send_telegram "$FULL_OUTPUT_PATH"; then
         echo "[INFO] Sent to Telegram"
@@ -286,3 +292,5 @@ if [ $? -eq 0 ]; then
 else
     echo "[ERROR] Failed to generate clip"
 fi
+
+exit $ffmpeg_status

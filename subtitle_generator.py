@@ -3,12 +3,6 @@ import sys
 import json
 
 
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: subtitle_generator.py <json> <ass>", file=sys.stderr)
-        sys.exit(1)
-
-
 def format_ts(sec: float) -> str:
     h = int(sec // 3600)
     m = int((sec % 3600) // 60)
