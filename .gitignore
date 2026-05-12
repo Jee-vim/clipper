@@ -1,3 +1,4 @@
-source/
-result/
+input/
+output/
+tmp/
 .env

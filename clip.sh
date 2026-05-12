@@ -3,11 +3,12 @@ set -euo pipefail
 
 # Resolve absolute paths
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-RESULT_DIR="$SCRIPT_DIR/result"
+OUTPUT_DIR="$SCRIPT_DIR/output"
+TMP_DIR="$SCRIPT_DIR/tmp"
 FONT_PATH="$SCRIPT_DIR/public/font/coolvetica.ttf"
 MODEL_PATH="$HOME/.cache/whisper-models/ggml-medium.bin"
 
-mkdir -p "$RESULT_DIR"
+mkdir -p "$OUTPUT_DIR" "$TMP_DIR"
 
 get_random_proxy() {
     if [ -z "$PROXIES" ]; then
@@ -122,7 +123,7 @@ fi
 
 # Download URL to temp file if needed
 if [ "$INPUT_IS_URL" = true ]; then
-    TEMP_INPUT="$RESULT_DIR/tmp_input_$(date +%s).mp4"
+    TEMP_INPUT="$TMP_DIR/tmp_input_$(date +%s).mp4"
     if [[ "$INPUT" =~ youtube\.com|youtu\.be ]]; then
         if ! command -v yt-dlp &> /dev/null; then
             echo "[ERROR] yt-dlp not found. Install: yt-dlp"
@@ -174,9 +175,9 @@ else
     CLEAN_FILENAME="${RAW_FILENAME// /-}"
     OUTPUT_FILE="clip-$CLEAN_FILENAME"
 fi
-FULL_OUTPUT_PATH="$RESULT_DIR/$OUTPUT_FILE"
-TEMP_AUDIO="$RESULT_DIR/tmp_audio.wav"
-SRT_BASE="$RESULT_DIR/tmp_subs"
+FULL_OUTPUT_PATH="$OUTPUT_DIR/$OUTPUT_FILE"
+TEMP_AUDIO="$TMP_DIR/tmp_audio.wav"
+SRT_BASE="$TMP_DIR/tmp_subs"
 SRT_FILE="$SRT_BASE.srt"
 ASS_FILE="$SRT_BASE.ass"
 
@@ -206,7 +207,7 @@ if [ "$USE_SUBTITLES" = true ]; then
 
         # Get full JSON with word-level timestamps
         JSON_FILE="$SRT_BASE.json"
-        WHISPER_LOG="$SCRIPT_DIR/whisper.log"
+        WHISPER_LOG="$TMP_DIR/whisper.log"
         if ! whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -ojf -of "$SRT_BASE" -np > "$WHISPER_LOG" 2>&1; then
             echo "[WARN] Whisper transcription failed, check $WHISPER_LOG"
         else
@@ -215,7 +216,7 @@ if [ "$USE_SUBTITLES" = true ]; then
 
         # Generate ASS subtitle
         if [ -f "$JSON_FILE" ]; then
-            python3 "$SCRIPT_DIR/subtitle_generator.py" "$JSON_FILE" "$ASS_FILE"
+            python3 "$SCRIPT_DIR/ass_builder.py" "$JSON_FILE" "$ASS_FILE"
 
             rm -f "$JSON_FILE"
             if [ -f "$ASS_FILE" ]; then
