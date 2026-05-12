@@ -185,6 +185,8 @@ if [ "$USE_SUBTITLES" = true ]; then
         WHISPER_LOG="$SCRIPT_DIR/whisper.log"
         if ! whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -ojf -of "$SRT_BASE" -np > "$WHISPER_LOG" 2>&1; then
             echo "[WARN] Whisper transcription failed, check $WHISPER_LOG"
+        else
+            rm -f "$WHISPER_LOG"
         fi
 
         # Generate ASS subtitle
