@@ -33,7 +33,6 @@ validate_time() {
     fi
 }
 
-# Variables
 INPUT=""
 INPUT_IS_URL=false
 START=""
@@ -75,11 +74,6 @@ while [[ $# -gt 0 ]]; do
             USE_SUBTITLES=true
             shift 1
             ;;
-        --subtitle)
-            echo "[WARN] --subtitle is deprecated, use --hardsub"
-            USE_SUBTITLES=true
-            shift 1
-            ;;        
         --title)
             CUSTOM_TITLE="$2"
             shift 2
