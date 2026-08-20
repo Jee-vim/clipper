@@ -47,6 +47,13 @@ PROXIES=""
 TELEGRAM_TOKEN=""
 TELEGRAM_CHAT_ID=""
 
+# Dynamic naming flags
+CROP_NAME=""
+CLIP_NAME=""
+HARDSUB_NAME=""
+WM_NAME=""
+BG_NAME=""
+
 if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
@@ -59,9 +66,13 @@ while [[ $# -gt 0 ]]; do
             validate_time "$START"
             validate_time "$END"
             SEEK_ARGS="-ss $START -to $END"
+            SAFE_START="${START//:/-}"
+            SAFE_END="${END//:/-}"
+            CLIP_NAME="${SAFE_START}-${SAFE_END}"
             shift 2
             ;;
         --crop)
+            CROP_NAME="$2"
             case $2 in
                 left)   CROP_FILTER="crop=iw*0.5:ih:0:0" ;;
                 center) CROP_FILTER="crop=iw*0.5:ih:iw*0.25:0" ;;
@@ -71,6 +82,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --hardsub)
             USE_SUBTITLES=true
+            HARDSUB_NAME="hardsub"
             shift 1
             ;;
         --title)
@@ -83,10 +95,16 @@ while [[ $# -gt 0 ]]; do
             ;;
         --watermark)
             WATERMARK="$2"
+            SAFE_WM=$(echo "$WATERMARK" | sed 's/[^a-zA-Z0-9._-]/_/g')
+            WM_NAME="wm-${SAFE_WM}"
             shift 2
             ;;
         --bg)
             BG="$2"
+            BG_BASE=$(basename "$BG")
+            SAFE_BG="${BG_BASE%.*}"
+            SAFE_BG=$(echo "$SAFE_BG" | sed 's/[^a-zA-Z0-9._-]/_/g')
+            BG_NAME="bg-${SAFE_BG}"
             shift 2
             ;;
         *)
@@ -116,43 +134,46 @@ fi
 
 # Download URL to temp file if needed
 if [ "$INPUT_IS_URL" = true ]; then
-    TEMP_INPUT="$TMP_DIR/tmp_input_$(date +%s).mp4"
+    UNIQUE_ID="$(date +%s)_$$"
     if [[ "$INPUT" =~ youtube\.com|youtu\.be ]]; then
         if ! command -v yt-dlp &> /dev/null; then
             echo "[ERROR] yt-dlp not found. Install: yt-dlp"
             exit 1
         fi
-        # Use download-sections to get only the clip range
+        
         YTDLP_RANGE=""
         if [ -n "$START" ] && [ -n "$END" ]; then
-            # Only use --download-sections if yt-dlp supports it
             if yt-dlp --help 2>&1 | grep -q "download-sections"; then
                 YTDLP_RANGE="--download-sections *${START}-${END}"
                 SEEK_ARGS=""
             fi
-            # If unsupported, keep SEEK_ARGS for ffmpeg to clip
         fi
+        
         echo "[INFO] Downloading video..."
         PROXY=$(get_random_proxy)
         YTDLP_PROXY_ARG=""
         if [ -n "$PROXY" ]; then
             YTDLP_PROXY_ARG="--proxy $PROXY"
         fi
-        # max 720p and min 360p same for audio
-        yt-dlp --no-progress -q \
-          --extractor-args "youtube:player_client=tv,mweb" \
+        
+        TEMP_INPUT=$(yt-dlp --no-progress -q --no-warnings \
+          --restrict-filenames \
+          --print after_move:filepath \
+          --merge-output-format mp4 \
+          --extractor-args "youtube:player_client=tv,tv_embedded" \
           --cookies-from-browser firefox \
           --sleep-requests 3 \
           --retries 3 \
           --socket-timeout 30 \
           --downloader-args "ffmpeg_i:-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5" \
           -f "bv*[height<=720][height>=360]+ba/b[height<=720][height>=360]" \
-          $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TEMP_INPUT" "$INPUT" || {
+          $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TMP_DIR/${UNIQUE_ID}_%(title)s.%(ext)s" "$INPUT") || {
             echo "[ERROR] Failed to download YouTube video"
             exit 1
         }
     else
         echo "[INFO] Downloading input..."
+        TEMP_INPUT="$TMP_DIR/tmp_input_${UNIQUE_ID}.mp4"
         PROXY=$(get_random_proxy)
         CURL_PROXY_ARG=""
         if [ -n "$PROXY" ]; then
@@ -171,15 +192,31 @@ fi
 
 # Naming Logic
 if [ -n "$CUSTOM_TITLE" ]; then
-    CLEAN_FILENAME=$(echo "$CUSTOM_TITLE" | sed 's/[^a-zA-Z0-9._-]/_/g')
-    OUTPUT_FILE="clip-$CLEAN_FILENAME.mp4"
+    # Sanitize title into hyphens instead of underscores
+    BASE_TITLE=$(echo "$CUSTOM_TITLE" | sed 's/[^a-zA-Z0-9.-]/-/g' | tr -s '-')
 else
-    BASE_NAME="${RAW_FILENAME%.*}"
-    CLEAN_FILENAME="${BASE_NAME// /-}"
-    OUTPUT_FILE="clip-$CLEAN_FILENAME.mp4"
+    BASE_TITLE="${RAW_FILENAME%.*}"
+    BASE_TITLE="${BASE_TITLE#[0-9]*_[0-9]*_}"
+    # Replace spaces and underscores with hyphens, then squeeze multiple hyphens
+    BASE_TITLE=$(echo "$BASE_TITLE" | tr ' _' '-' | sed 's/[^a-zA-Z0-9.-]/-/g' | tr -s '-')
 fi
+
+# Append active flags dynamically
+FILENAME_PARTS=("Clip" "$BASE_TITLE")
+[ -n "$CROP_NAME" ] && FILENAME_PARTS+=("$CROP_NAME")
+[ -n "$CLIP_NAME" ] && FILENAME_PARTS+=("$CLIP_NAME")
+[ -n "$HARDSUB_NAME" ] && FILENAME_PARTS+=("$HARDSUB_NAME")
+[ -n "$WM_NAME" ] && FILENAME_PARTS+=("$WM_NAME")
+[ -n "$BG_NAME" ] && FILENAME_PARTS+=("$BG_NAME")
+
+# Join array with hyphens
+IFS='-'
+OUTPUT_FILE="${FILENAME_PARTS[*]}.mp4"
+unset IFS
+
 FULL_OUTPUT_PATH="$OUTPUT_DIR/$OUTPUT_FILE"
-UNIQUE_ID="$(date +%s)_$$"
+
+UNIQUE_ID="${UNIQUE_ID:-$(date +%s)_$$}"
 TEMP_AUDIO="$TMP_DIR/tmp_audio_$UNIQUE_ID.wav"
 SRT_BASE="$TMP_DIR/tmp_subs_$UNIQUE_ID"
 SRT_FILE="$SRT_BASE.srt"
@@ -187,11 +224,11 @@ ASS_FILE="$SRT_BASE.ass"
 
 # Cleanup temp files on exit
 cleanup() {
-    [[ -f "$TEMP_INPUT" ]] && rm "$TEMP_INPUT" || true
-    [[ -f "$TEMP_AUDIO" ]] && rm "$TEMP_AUDIO" || true
-    [[ -f "$SRT_FILE" ]] && rm "$SRT_FILE" || true
-    [[ -f "$ASS_FILE" ]] && rm "$ASS_FILE" || true
-    [[ -f "$SRT_BASE.json" ]] && rm "$SRT_BASE.json" || true
+    [[ -n "$TEMP_INPUT" && -e "$TEMP_INPUT" ]] && rm -rf "$TEMP_INPUT" || true
+    [[ -f "$TEMP_AUDIO" ]] && rm -f "$TEMP_AUDIO" || true
+    [[ -f "$SRT_FILE" ]] && rm -f "$SRT_FILE" || true
+    [[ -f "$ASS_FILE" ]] && rm -f "$ASS_FILE" || true
+    [[ -f "$SRT_BASE.json" ]] && rm -f "$SRT_BASE.json" || true
 }
 trap cleanup EXIT
 
@@ -209,7 +246,6 @@ if [ "$USE_SUBTITLES" = true ]; then
             exit 1
         fi
 
-        # Get full JSON with word-level timestamps
         JSON_FILE="$SRT_BASE.json"
         WHISPER_LOG="$TMP_DIR/whisper.log"
         if ! whisper-cli -m "$MODEL_PATH" -f "$TEMP_AUDIO" -osrt -ojf -of "$SRT_BASE" -np > "$WHISPER_LOG" 2>&1; then
@@ -218,7 +254,6 @@ if [ "$USE_SUBTITLES" = true ]; then
             rm -f "$WHISPER_LOG"
         fi
 
-        # Generate ASS subtitle
         if [ -f "$JSON_FILE" ]; then
             python3 "$SCRIPT_DIR/ass_builder.py" "$JSON_FILE" "$ASS_FILE"
 
@@ -237,11 +272,9 @@ echo "[INFO] Generating video..."
 
 ffmpeg_status=0
 if [ -n "$BG" ]; then
-    # Use media as background instead of solid black
     BG=$(realpath "$BG")
     echo "[INFO] Using background: $BG"
 
-    # Detect if bg is video (needs loop) or image (single frame)
     BG_LOOP=""
     OVERLAY_SHORTEST=""
     case "${BG,,}" in
@@ -252,15 +285,12 @@ if [ -n "$BG" ]; then
             ;;
     esac
 
-    # Video processing: crop (optional) + scale to fit
     VIDEO_CHAIN="[0:v]"
     [ -n "$CROP_FILTER" ] && VIDEO_CHAIN+="$CROP_FILTER,"
     VIDEO_CHAIN+="scale=1080:1920:force_original_aspect_ratio=decrease[fg]"
 
-    # Background: scale to fill frame (cover mode for horizontal→vertical)
     BG_CHAIN="[1:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg]"
 
-    # Overlay + text + subtitles
     POST_CHAIN="[bg][fg]overlay=(W-w)/2:(H-h)/2$OVERLAY_SHORTEST"
     POST_CHAIN+=",drawtext=text='$WATERMARK':fontcolor=white@0.5:fontsize=48:x=(w-tw)/2:y=(h-th)/2:fontfile='$FONT_PATH'"
     [ -n "$SUBTITLE_FILTER" ] && POST_CHAIN+=",$SUBTITLE_FILTER"
@@ -272,7 +302,6 @@ if [ -n "$BG" ]; then
         -c:v libx264 -preset faster -crf 23 -pix_fmt yuv420p \
         "$FULL_OUTPUT_PATH" || ffmpeg_status=$?
 else
-    # Original: black background via pad
     VF_FILTERS=()
     [ -n "$CROP_FILTER" ] && VF_FILTERS+=("$CROP_FILTER")
     VF_FILTERS+=("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black")
