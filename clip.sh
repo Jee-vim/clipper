@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve absolute paths
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 OUTPUT_DIR="$SCRIPT_DIR/output"
 TMP_DIR="$SCRIPT_DIR/tmp"
@@ -139,7 +138,16 @@ if [ "$INPUT_IS_URL" = true ]; then
         if [ -n "$PROXY" ]; then
             YTDLP_PROXY_ARG="--proxy $PROXY"
         fi
-        yt-dlp --no-progress -q -f "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best" $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TEMP_INPUT" "$INPUT" || {
+        # max 720p and min 360p same for audio
+        yt-dlp --no-progress -q \
+          --extractor-args "youtube:player_client=tv,mweb" \
+          --cookies-from-browser firefox \
+          --sleep-requests 3 \
+          --retries 3 \
+          --socket-timeout 30 \
+          --downloader-args "ffmpeg_i:-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5" \
+          -f "bv*[height<=720][height>=360]+ba/b[height<=720][height>=360]" \
+          $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TEMP_INPUT" "$INPUT" || {
             echo "[ERROR] Failed to download YouTube video"
             exit 1
         }
@@ -166,12 +174,14 @@ if [ -n "$CUSTOM_TITLE" ]; then
     CLEAN_FILENAME=$(echo "$CUSTOM_TITLE" | sed 's/[^a-zA-Z0-9._-]/_/g')
     OUTPUT_FILE="clip-$CLEAN_FILENAME.mp4"
 else
-    CLEAN_FILENAME="${RAW_FILENAME// /-}"
-    OUTPUT_FILE="clip-$CLEAN_FILENAME"
+    BASE_NAME="${RAW_FILENAME%.*}"
+    CLEAN_FILENAME="${BASE_NAME// /-}"
+    OUTPUT_FILE="clip-$CLEAN_FILENAME.mp4"
 fi
 FULL_OUTPUT_PATH="$OUTPUT_DIR/$OUTPUT_FILE"
-TEMP_AUDIO="$TMP_DIR/tmp_audio.wav"
-SRT_BASE="$TMP_DIR/tmp_subs"
+UNIQUE_ID="$(date +%s)_$$"
+TEMP_AUDIO="$TMP_DIR/tmp_audio_$UNIQUE_ID.wav"
+SRT_BASE="$TMP_DIR/tmp_subs_$UNIQUE_ID"
 SRT_FILE="$SRT_BASE.srt"
 ASS_FILE="$SRT_BASE.ass"
 
@@ -214,7 +224,8 @@ if [ "$USE_SUBTITLES" = true ]; then
 
             rm -f "$JSON_FILE"
             if [ -f "$ASS_FILE" ]; then
-                SUBTITLE_FILTER="subtitles='$ASS_FILE':force_style='Fontname=DejaVuSans-Bold,Fontsize=80,PrimaryColour=&H00FFFF00'"
+                ESCAPED_ASS_FILE=$(printf '%s\n' "$ASS_FILE" | sed -e 's/\\/\\\\/g' -e "s/'/\\\\'/g" -e 's/:/\\:/g')
+                SUBTITLE_FILTER="subtitles='$ESCAPED_ASS_FILE':force_style='Fontname=DejaVuSans-Bold,Fontsize=80,PrimaryColour=&H00FFFF00'"
             fi
         else
             echo "[WARN] JSON file not created"
@@ -247,7 +258,7 @@ if [ -n "$BG" ]; then
     VIDEO_CHAIN+="scale=1080:1920:force_original_aspect_ratio=decrease[fg]"
 
     # Background: scale to fill frame (cover mode for horizontal→vertical)
-    BG_CHAIN="[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg]"
+    BG_CHAIN="[1:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg]"
 
     # Overlay + text + subtitles
     POST_CHAIN="[bg][fg]overlay=(W-w)/2:(H-h)/2$OVERLAY_SHORTEST"
