@@ -58,13 +58,25 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
 fi
 
-# Argument Parsing
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --clip)
+         --clip)
             read -r START END <<< "$2"
             validate_time "$START"
             validate_time "$END"
+            
+            format_seconds() {
+                local sec=$1
+                if [[ "$sec" =~ ^[0-9]+$ ]]; then
+                    printf "%02d:%02d:%02d" $((sec/3600)) $(( (sec%3600)/60 )) $((sec%60))
+                else
+                    echo "$sec"
+                fi
+            }
+
+            F_START=$(format_seconds "$START")
+            F_END=$(format_seconds "$END")
+
             SEEK_ARGS="-ss $START -to $END"
             SAFE_START="${START//:/-}"
             SAFE_END="${END//:/-}"
@@ -156,18 +168,15 @@ if [ "$INPUT_IS_URL" = true ]; then
             YTDLP_PROXY_ARG="--proxy $PROXY"
         fi
         
-        TEMP_INPUT=$(yt-dlp --no-progress -q --no-warnings \
-          --restrict-filenames \
+        TEMP_INPUT=$(yt-dlp --restrict-filenames \
           --print after_move:filepath \
           --merge-output-format mp4 \
-          --extractor-args "youtube:player_client=tv,tv_embedded" \
-          --cookies-from-browser firefox \
           --sleep-requests 3 \
           --retries 3 \
           --socket-timeout 30 \
           --downloader-args "ffmpeg_i:-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5" \
           -f "bv*[height<=720][height>=360]+ba/b[height<=720][height>=360]" \
-          $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TMP_DIR/${UNIQUE_ID}_%(title)s.%(ext)s" "$INPUT") || {
+          $YTDLP_RANGE $YTDLP_PROXY_ARG -o "$TMP_DIR/${UNIQUE_ID}_%(title)s.%(ext)s" "$INPUT" | tail -n 1) || {
             echo "[ERROR] Failed to download YouTube video"
             exit 1
         }
@@ -241,7 +250,7 @@ if [ "$USE_SUBTITLES" = true ]; then
         echo "[WARN] GGML model not found at $MODEL_PATH. Skipping subtitles."
     else
         echo "[INFO] Extracting audio and Transcribing..."
-        if ! ffmpeg -y -hide_banner -loglevel error $SEEK_ARGS -i "$INPUT" -ar 16000 -ac 1 -c:a pcm_s16le "$TEMP_AUDIO"; then
+        if ! ffmpeg -y -hide_banner -stats $SEEK_ARGS -i "$INPUT" -ar 16000 -ac 1 -c:a pcm_s16le "$TEMP_AUDIO"; then
             echo "[ERROR] Failed to extract audio"
             exit 1
         fi
@@ -322,7 +331,7 @@ if [ $ffmpeg_status -eq 0 ]; then
     if send_telegram "$FULL_OUTPUT_PATH"; then
         echo "[INFO] Sent to Telegram"
     else
-        echo "[WARN] Failed to send to Telegram"
+        echo "[WARN] Skip send to send to Telegram"
     fi
 else
     echo "[ERROR] Failed to generate clip"
