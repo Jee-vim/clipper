@@ -264,7 +264,7 @@ if [ "$USE_SUBTITLES" = true ]; then
         fi
 
         if [ -f "$JSON_FILE" ]; then
-            python3 "$SCRIPT_DIR/ass_builder.py" "$JSON_FILE" "$ASS_FILE"
+            python3 "$SCRIPT_DIR/src/ass_builder.py" "$JSON_FILE" "$ASS_FILE"
 
             rm -f "$JSON_FILE"
             if [ -f "$ASS_FILE" ]; then
