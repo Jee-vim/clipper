@@ -47,4 +47,4 @@ Video processing CLI tool for creating vertical (9:16) clips from url or local v
 
 ## Output
 
-Generated videos are saved to `result/` directory with `clip-` prefix.
+Generated videos are saved to `output/` directory with a `Clip-` prefix (e.g. `Clip-<title>-<args>.mp4`).
