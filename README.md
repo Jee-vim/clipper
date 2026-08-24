@@ -5,7 +5,7 @@ Video processing CLI tool for creating vertical (9:16) clips from url or local v
 ## Usage
 
 ```bash
-./clip.sh <input> [options]
+./clip.py <input> [options]
 ```
 
 ## Options
@@ -22,28 +22,28 @@ Video processing CLI tool for creating vertical (9:16) clips from url or local v
 
 ```bash
 # Local file
-./clip.sh video.mp4
+./clip.py video.mp4
 
 # Clip a local file (seconds)
-./clip.sh --clip "0 30" video.mp4
+./clip.py --clip "0 30" video.mp4
 
 # Clip a local file (timestamp)
-./clip.sh --clip "05:40 06:00" video.mp4
+./clip.py --clip "05:40 06:00" video.mp4
 
 # YouTube video (full)
-./clip.sh "https://youtu.be/XXXXX"
+./clip.py "https://youtu.be/XXXXX"
 
 # YouTube video with clip
-./clip.sh --clip "0 30" "https://youtu.be/XXXXX"
+./clip.py --clip "0 30" "https://youtu.be/XXXXX"
 
 # Regular URL
-./clip.sh "https://example.com/video.mp4"
+./clip.py "https://example.com/video.mp4"
 
 # With crop, subtitles, and custom watermark
-./clip.sh --clip "0 30" --crop center --hardsub --watermark "mytext" video.mp4
+./clip.py --clip "0 30" --crop center --hardsub --watermark "mytext" video.mp4
 
 # With background (image or video)
-./clip.sh --bg public/minecraft.jpg video.mp4
+./clip.py --bg public/minecraft.jpg video.mp4
 
 ## Output
 
