@@ -32,11 +32,25 @@ def _subtitle_filter(ass: Path) -> str:
     )
 
 
+def has_video(path: Path) -> bool:
+    res = subprocess.run([
+        "ffprobe", "-v", "error", "-select_streams", "v:0",
+        "-show_entries", "stream=index", "-of", "csv=p=0", str(path),
+    ], capture_output=True, text=True)
+    return res.returncode == 0 and res.stdout.strip() != ""
+
+
 def render(
     input_path: Path, output_path: Path, *,
     crop: str = "", watermark: str = "", font: Path, bg: Path | None = None,
     ass: Path | None = None, seek: str = "",
 ) -> int:
+    if not has_video(input_path):
+        if bg:
+            print("[INFO] Audio input detected - using background video as visual")
+            return _render_audio_bg(input_path, output_path, bg, watermark, font, ass, seek)
+        print("[WARN] Audio-only input without --bg; using black background")
+        return _render_audio_black(input_path, output_path, watermark, font, ass, seek)
     if bg:
         return _render_with_bg(input_path, output_path, bg, crop, watermark, font, ass, seek)
     return _render_plain(input_path, output_path, crop, watermark, font, ass, seek)
@@ -56,7 +70,51 @@ def _common_filters(crop, watermark, font, ass):
     return ",".join(vf)
 
 
-def _render_plain(input_path, output_path, crop, watermark, font, ass, seek) -> int:
+def _render_audio_bg(input_path, output_path, bg, watermark, font, ass, seek) -> int:
+    bg = bg.resolve()
+    fc = (
+        "[0:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,"
+        "crop=1080:1920"
+    )
+    fc += f",{_watermark(font, watermark)}"
+    if ass:
+        fc += f",{_subtitle_filter(ass)}"
+    fc += "[vout]"
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-stream_loop", "-1", "-i", str(bg),
+        *seek.split(), "-i", str(input_path),
+        "-filter_complex", fc,
+        "-map", "[vout]", "-map", "1:a",
+        "-shortest",
+        "-c:a", "aac", "-b:a", "128k",
+        "-c:v", "libx264", "-preset", "faster", "-crf", "23", "-pix_fmt", "yuv420p",
+        str(output_path),
+    ]
+    return subprocess.run(cmd).returncode
+
+
+def _render_audio_black(input_path, output_path, watermark, font, ass, seek) -> int:
+    fc = (
+        "[0:v]fps=30,scale=1080:1920:force_original_aspect_ratio=increase,"
+        "crop=1080:1920"
+    )
+    fc += f",{_watermark(font, watermark)}"
+    if ass:
+        fc += f",{_subtitle_filter(ass)}"
+    fc += "[vout]"
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-f", "lavfi", "-i", "color=c=black:s=1080x1920:r=30",
+        *seek.split(), "-i", str(input_path),
+        "-filter_complex", fc,
+        "-map", "[vout]", "-map", "1:a",
+        "-shortest",
+        "-c:a", "aac", "-b:a", "128k",
+        "-c:v", "libx264", "-preset", "faster", "-crf", "23", "-pix_fmt", "yuv420p",
+        str(output_path),
+    ]
+    return subprocess.run(cmd).returncode
     vf = _common_filters(crop, watermark, font, ass)
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",

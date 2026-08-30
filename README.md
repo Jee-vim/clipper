@@ -1,6 +1,17 @@
 # Clipper
 
-Video processing CLI tool for creating vertical (9:16) clips from url or local video
+Video processing CLI tool for creating vertical (9:16) clips from url, local video, or **audio** input.
+
+## Audio input
+
+Pass an audio file (e.g. `voice.mp3`) as input. With `--bg <video>`, the
+background video becomes the only visible track while your audio is the sound
+track; add `--hardsub` to burn subtitles transcribed from the audio.
+Without `--bg`, a black background is used.
+
+```bash
+./clip.py --hardsub --bg public/bg.mp4 voice.mp3
+```
 
 ## Usage
 
