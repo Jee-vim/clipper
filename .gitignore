@@ -3,3 +3,23 @@ output/
 tmp/
 .env
 .local/
+__pycache__/
+public/
+
+# Media / binary assets
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.m4v
+*.mp3
+*.wav
+*.ogg
+*.jpg
+*.jpeg
+*.png
+*.ttf
+
+# Logs
+*.log

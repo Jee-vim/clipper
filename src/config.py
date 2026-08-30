@@ -6,7 +6,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
 TMP_DIR = SCRIPT_DIR / "tmp"
-FONT_PATH = SCRIPT_DIR / "public" / "font" / "coolvetica.ttf"
+FONT_PATH = SCRIPT_DIR / "input" / "font" / "coolvetica.ttf"
 MODEL_PATH = Path.home() / ".cache" / "whisper-models" / "ggml-medium.bin"
 
 

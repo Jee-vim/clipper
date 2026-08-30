@@ -10,7 +10,7 @@ track; add `--hardsub` to burn subtitles transcribed from the audio.
 Without `--bg`, a black background is used.
 
 ```bash
-./clip.py --hardsub --bg public/bg.mp4 voice.mp3
+./clip.py --hardsub --bg input/bg.mp4 voice.mp3
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ Without `--bg`, a black background is used.
 | `--crop left\|center\|right` | Crop horizontal position | `--crop center` |
 | `--hardsub` | Auto generate and embed subtitles | `--hardsub` |
 | `--watermark "TEXT"` | Custom watermark (default: "obrolan_clip") | `--watermark "mytext"` |
-| `--bg PATH` | Image/video as background instead of black | `--bg public/bg.jpg` |
+| `--bg PATH` | Image/video as background instead of black | `--bg input/bg.jpg` |
 
 ## Examples
 
@@ -54,7 +54,7 @@ Without `--bg`, a black background is used.
 ./clip.py --clip "0 30" --crop center --hardsub --watermark "mytext" video.mp4
 
 # With background (image or video)
-./clip.py --bg public/minecraft.jpg video.mp4
+./clip.py --bg input/minecraft.jpg video.mp4
 
 ## Output
 
