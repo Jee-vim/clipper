@@ -36,8 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--watermark", default="obrolan_clip", help="Watermark text")
     p.add_argument("--bg", type=Path, help="Background image or video")
     p.add_argument(
-        "--story", nargs="+", metavar=("SCRIPT", "AUDIO_OUT"),
-        help="Generate TTS audio from a two-speaker script (TXT or SRT)",
+        "--story", nargs=1, metavar="SCRIPT|AUDIO",
+        help="Story mode. Pass a TXT/SRT script to generate TTS audio, "
+             "or pass an audio file (mp3/wav/...) to use it directly and "
+             "extract the transcript from the audio for subtitles. "
+             "Output audio defaults to <script-name>.mp3.",
     )
     return p
 
