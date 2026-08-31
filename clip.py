@@ -4,11 +4,14 @@
 Usage mirrors the original shell script:
     clip.py <input> [--clip START END] [--crop left|center|right]
             [--hardsub] [--title TITLE] [--watermark TEXT] [--bg PATH]
+
+TTS story mode:
+    clip.py --story SCRIPT [AUDIO_OUT] --bg BG_VIDEO
 """
 import sys
 from pathlib import Path
 
-from src import Config, Options, parse
+from src import Config, Options, parse, generate_story
 from src import download, naming, transcribe, ffmpeg, telegram, timeutils
 
 _TMP_FILES: list[Path] = []
@@ -23,13 +26,30 @@ def _cleanup() -> None:
             shutil.rmtree(f, ignore_errors=True)
 
 
+def _resolve_story(opts: Options, cfg: Config) -> Path:
+    """Generate TTS audio from a --story script. Returns the audio path."""
+    script = opts.story[0]
+    audio_out = opts.story[1] if len(opts.story) > 1 else None
+    if not audio_out:
+        audio_out = f"{Path(script).stem}.mp3"
+    out_path = (cfg.output_dir / audio_out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    print(f"[INFO] Generating TTS from story: {script}")
+    audio_path = generate_story(Path(script), out_path)
+    return audio_path
+
+
 def _resolve_input(opts: Options, cfg: Config) -> tuple[Path, bool, bool]:
+    if opts.story:
+        path = _resolve_story(opts, cfg)
+        return path, True, False
+
     src = opts.input
     if src.startswith("http://") or src.startswith("https://"):
         path, trimmed = download.download(src, cfg.tmp_dir, cfg.proxies, opts.start, opts.end)
         return path, True, trimmed
     if not src or not Path(src).is_file():
-        raise SystemExit("[ERROR] Valid input file or URL required.")
+        raise SystemExit("[ERROR] Valid input file, URL, or --story required.")
     return Path(src).resolve(), False, False
 
 

@@ -18,6 +18,7 @@ class Options:
     title: str = ""
     watermark: str = "obrolan_clip"
     bg: Path | None = None
+    story: list[str] | None = None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--title", help="Custom output title")
     p.add_argument("--watermark", default="obrolan_clip", help="Watermark text")
     p.add_argument("--bg", type=Path, help="Background image or video")
+    p.add_argument(
+        "--story", nargs="+", metavar=("SCRIPT", "AUDIO_OUT"),
+        help="Generate TTS audio from a two-speaker script (TXT or SRT)",
+    )
     return p
 
 
@@ -46,6 +51,7 @@ def parse(argv: list[str]) -> Options:
         title=ns.title or "",
         watermark=ns.watermark,
         bg=ns.bg,
+        story=ns.story,
     )
     if ns.clip:
         raw = ns.clip

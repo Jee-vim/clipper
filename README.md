@@ -2,6 +2,37 @@
 
 Video processing CLI tool for creating vertical (9:16) clips from url, local video, or **audio** input.
 
+## TTS Story Mode
+
+Generate a two-speaker conversation from a script file and composite it over a
+background video. The `--story` flag takes a script path and an output audio
+path; Chatterbox TTS (local, free) produces the dialogue audio, which then
+flows through the same rendering pipeline as any audio input.
+
+```bash
+# Script format (script.txt):
+#   RIAN: So, what exactly is the Zig programming language?
+#   BOB:  Zig is a modern systems language with no hidden GC.
+./clip.py --story script.txt podcast.mp3 --bg input/bg.mp4
+
+# Audio output defaults to <script-name>.mp3 if omitted
+./clip.py --story script.txt --bg input/bg.mp4
+
+# With subtitles burned in from the generated audio
+./clip.py --story script.txt podcast.mp3 --bg input/bg.mp4 --hardsub
+
+# .srt scripts use pre-timed cues to adjust TTS speed to match cadence
+./clip.py --story script.srt podcast.mp3 --bg input/bg.mp4
+```
+
+### Story options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--story SCRIPT [AUDIO_OUT]` | Generate TTS audio from a two-speaker script | — |
+
+Without `--story`, Chatterbox's built-in default voice is used for both speakers.
+
 ## Audio input
 
 Pass an audio file (e.g. `voice.mp3`) as input. With `--bg <video>`, the

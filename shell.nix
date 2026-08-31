@@ -9,9 +9,18 @@ in
       whisper-cpp
       python3
       curl
+      # TTS dependencies (Chatterbox / torch)
+      uv
+      python312
+      stdenv.cc.cc.lib
+      zlib
+      libsndfile
+      espeak-ng
     ];
 
     shellHook = ''
+      export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.libsndfile}/lib:$LD_LIBRARY_PATH"
+
       mkdir -p "${modelDir}"
       if [ ! -f "${modelFile}" ]; then
         echo "[INFO] Downloading ggml-medium.bin model..."
@@ -30,5 +39,16 @@ in
       fi
       "$LOCAL_BIN/yt-dlp" -U >/dev/null 2>&1 || true
       export PATH="$LOCAL_BIN:$PATH"
+
+      # TTS venv (lazy: only needed for --story)
+      if [ ! -d .venv ]; then
+        uv venv --python ${pkgs.python312}/bin/python .venv
+        uv pip install --python .venv/bin/python \
+          chatterbox-tts soundfile torchaudio
+      fi
+      source .venv/bin/activate
+
+      # Pre-fetch Chatterbox model weights into the HF cache (cached; fast on re-entry)
+      python3 -c "from huggingface_hub import snapshot_download; snapshot_download('ResembleAI/chatterbox')" || true
     '';
   }
