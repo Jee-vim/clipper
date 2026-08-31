@@ -7,7 +7,8 @@ def send_video(path: Path, token: str, chat_id: str) -> bool:
     if not token or not chat_id:
         return False
     cmd = [
-        "curl", "-fsSL", "-X", "POST",
+        "curl", "-fsSL", "--connect-timeout", "15", "--max-time", "300",
+        "-X", "POST",
         f"https://api.telegram.org/bot{token}/sendVideo",
         "-F", f"chat_id={chat_id}", "-F", f"video=@{path}",
     ]

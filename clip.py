@@ -16,6 +16,7 @@ from pathlib import Path
 
 from src import Config, Options, parse, generate_story
 from src import download, naming, transcribe, ffmpeg, telegram, timeutils
+from src import gemini
 
 _TMP_FILES: list[Path] = []
 
@@ -55,7 +56,21 @@ def _resolve_story(opts: Options, cfg: Config) -> tuple[Path, bool]:
     return audio_path, False
 
 
+def _resolve_topic(opts: Options, cfg: Config) -> Path:
+    """Write an AI script from a topic, then generate its TTS audio."""
+    print(f"[INFO] Writing script from topic via Gemini: {opts.topic}")
+    script = gemini.generate_script(
+        opts.topic, api_key=cfg.gemini_api_key, model=cfg.gemini_model,
+        out_dir=cfg.output_dir,
+    )
+    audio_out = script.with_suffix(".mp3")
+    print(f"[INFO] Generating TTS from AI script: {script.name}")
+    return generate_story(script, audio_out)
+
+
 def _resolve_input(opts: Options, cfg: Config) -> tuple[Path, bool, bool, bool]:
+    if opts.topic:
+        return _resolve_topic(opts, cfg), True, False, False
     if opts.story:
         path, is_audio = _resolve_story(opts, cfg)
         return path, True, False, is_audio

@@ -31,6 +31,8 @@ class Config:
     proxies: list[str] = field(default_factory=list)
     telegram_token: str = ""
     telegram_chat_id: str = ""
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -40,4 +42,6 @@ class Config:
             proxies=proxies,
             telegram_token=os.environ.get("TELEGRAM_TOKEN", ""),
             telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
+            gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
+            gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
         )

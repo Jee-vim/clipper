@@ -34,6 +34,9 @@ Vertical (9:16) clip generator from url, video, or audio input.
 # Story: use an existing audio file, transcript extracted from it
 ./clip.py --story podcast.mp3 --bg input/bg.mp4
 ./clip.py --story podcast.mp3
+
+# AI story: Gemini writes the script from a topic, then TTS
+./clip.py --topic "why is the ocean salty" --bg input/bg.mp4
 ```
 
 ## Options
@@ -49,7 +52,14 @@ Vertical (9:16) clip generator from url, video, or audio input.
 | `--bg PATH` | Image/video background | `--bg input/bg.jpg` |
 | `--story SCRIPT` | TTS audio from a script (output `<script>.mp3`) | `--story script.txt` |
 | `--story AUDIO` | Use audio directly, extract transcript | `--story podcast.mp3` |
+| `--topic TOPIC` | Gemini writes a two-speaker script, then TTS | `--topic "ocean facts"` |
 
 ## Output
 
 Saved to `output/` with a `Clip-` prefix (e.g. `Clip-<title>-<args>.mp4`).
+
+## AI story setup
+
+Set `GEMINI_API_KEY` (free key from Google AI Studio) in `.env` or the shell.
+Optional `GEMINI_MODEL` overrides the default `gemini-2.5-flash`. The generated
+script is saved as `output/story_<topic>.txt` so you can reuse or edit it.

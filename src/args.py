@@ -19,6 +19,7 @@ class Options:
     watermark: str = "obrolan_clip"
     bg: Path | None = None
     story: list[str] | None = None
+    topic: str = ""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,6 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
              "extract the transcript from the audio for subtitles. "
              "Output audio defaults to <script-name>.mp3.",
     )
+    p.add_argument(
+        "--topic", metavar="TOPIC",
+        help="AI story mode. Topic for Gemini to write a two-speaker "
+             "script (needs GEMINI_API_KEY in env). Result feeds TTS.",
+    )
     return p
 
 
@@ -55,7 +61,10 @@ def parse(argv: list[str]) -> Options:
         watermark=ns.watermark,
         bg=ns.bg,
         story=ns.story,
+        topic=ns.topic or "",
     )
+    if ns.topic and ns.story:
+        raise SystemExit("[ERROR] Use --topic or --story, not both")
     if ns.clip:
         raw = ns.clip
         if len(raw) == 1:
