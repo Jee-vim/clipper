@@ -1,11 +1,10 @@
 """TTS story generator (Chatterbox, local + free).
 
-Turns a two-speaker script into a single audio file. The heavy ML imports
+Turns a plain-text script into a single audio file. The heavy ML imports
 (torch/chatterbox) are lazy so video-only runs of the parent CLI stay light.
 
-Script format (one line per turn):
-    RIAN: spoken text
-    BOB:  spoken text
+Script format (one sentence per line):
+    spoken text
 
 A .srt file may also be used instead of .txt. The SRT timing cues drive the
 playback speed (atempo) of each segment so the generated audio matches the
@@ -18,8 +17,15 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-SPEAKER_A = "RIAN"
-SPEAKER_B = "BOB"
+def resolve_ref(
+    speaker: str, ref_a: Path | None, ref_b: Path | None
+) -> Path | None:
+    if speaker == "A":
+        return ref_a
+    if speaker == "B":
+        return ref_b
+    return None
+
 LINE_RE = re.compile(r"^([A-Za-z]+):[ \t]*(.*)$")
 SPEAKER_PREFIX_RE = re.compile(r"^([A-Za-z]+):[ \t]*")
 SRT_RE = re.compile(
@@ -30,16 +36,6 @@ SRT_RE = re.compile(
 
 def log(level: str, msg: str) -> None:
     print(f"[{level}] {msg}")
-
-
-def resolve_ref(
-    speaker: str, ref_a: Path | None, ref_b: Path | None
-) -> Path | None:
-    if speaker == SPEAKER_A:
-        return ref_a
-    if speaker == SPEAKER_B:
-        return ref_b
-    return None
 
 
 def validate_assets(ref_a: Path | None, ref_b: Path | None) -> None:
@@ -79,7 +75,7 @@ def ref_for_line(
     text: str, ref_a: Path | None, ref_b: Path | None
 ) -> Path | None:
     m = LINE_RE.match(text)
-    if m and m.group(1) in (SPEAKER_A, SPEAKER_B):
+    if m and m.group(1) in ("A", "B"):
         return resolve_ref(m.group(1), ref_a, ref_b)
     return ref_a
 
@@ -286,7 +282,7 @@ def generate_story(
                 if gap > 0:
                     segs.append(torch.zeros(int(sr * gap)).unsqueeze(0))
                 tts_text = SPEAKER_PREFIX_RE.sub("", spoken)
-                ref = ref_for_line(spoken, ref_a, ref_b)
+                ref = ref_for_line(tts_text, ref_a, ref_b)
                 wav = model.generate(
                     tts_text,
                     audio_prompt_path=ref,
@@ -310,21 +306,11 @@ def generate_story(
                 line = raw.rstrip("\n")
                 if not line.strip():
                     continue
-                m = LINE_RE.match(line)
-                if not m:
-                    log("WARN", f"Skipping unparsed line: {line}")
-                    skipped += 1
-                    continue
-                speaker = m.group(1)
-                text = m.group(2)
-                if speaker not in (SPEAKER_A, SPEAKER_B):
-                    log("WARN", f"Unknown speaker '{speaker}', skipping line")
-                    skipped += 1
-                    continue
-                if not text.strip():
+                text = line.strip()
+                if not text:
                     continue
 
-                ref = resolve_ref(speaker, ref_a, ref_b)
+                ref = ref_a
                 wav = model.generate(
                     text,
                     audio_prompt_path=ref,
@@ -336,7 +322,7 @@ def generate_story(
                 segs.append(wav)
                 idx += 1
                 label = os.path.basename(ref) if ref else "default"
-                log("INFO", f"Segment {idx} ({speaker}/{label}) written")
+                log("INFO", f"Segment {idx} ({label}) written")
 
     if idx == 0:
         log("ERROR", f"No valid dialogue segments found in {script}")

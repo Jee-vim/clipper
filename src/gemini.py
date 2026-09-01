@@ -1,6 +1,6 @@
 """Gemini (Google AI Studio) script generation.
 
-Takes a topic and returns a two-speaker script file (RIAN/BOB format) that
+Takes a topic and returns a podcast-style script that
 feeds straight into the TTS pipeline. Uses only the stdlib urllib so no extra
 dependency is required.
 """
@@ -15,8 +15,6 @@ DEFAULT_MODEL = "gemini-2.5-flash"
 
 DEFAULT_SYSTEM_PROMPT = (
     "Write a short podcast-style monologue explaining [TOPIC].\n"
-    "Use exactly 1 speaker:\n"
-    "RIAN\n"
     "\n"
     "Make the script around 30-60 seconds when spoken naturally.\n"
     "\n"
@@ -24,7 +22,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "Start immediately with a natural question about the topic.\n"
     "After asking the question, smoothly jump into the explanation yourself.\n"
     "Make it sound like someone casually explaining something to a friend, not giving a formal presentation.\n"
-    "RIAN should sound curious and conversational, as if they are asking a question and then explaining the answer.\n"
+    "The speaker should sound curious and conversational, as if they are asking a question and then explaining the answer.\n"
     "Use natural transitions such as \u201cSo, what exactly is...?\u201d, \u201cBut how does that work?\u201d, \u201cBasically...\u201d, \u201cThe simple way to think about it is...\u201d, or \u201cIn other words...\u201d.\n"
     "Keep the language simple and easy to understand for someone who knows almost nothing about the topic.\n"
     "Avoid professional, academic, or overly technical language.\n"
@@ -39,8 +37,12 @@ DEFAULT_SYSTEM_PROMPT = (
     "Output ONLY plain text.\n"
     "Do NOT use Markdown.\n"
     "Do NOT use headings, bullet points, bold text, or quotation marks.\n"
-    "Format script lines as:\n"
-    "RIAN: ..."
+    "Write one sentence per line.\n"
+    "\n"
+    "Formatting:\n"
+    "Output ONLY plain text.\n"
+    "Do NOT use Markdown.\n"
+    "Do NOT use headings, bullet points, bold text, or quotation marks.\n"
 )
 
 _FENCE_RE = re.compile(r"^```[a-zA-Z]*\s*|\s*```$", re.MULTILINE)
