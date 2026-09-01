@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--crop", choices=CROP_CHOICES, help="Crop half: left/center/right")
     p.add_argument("--hardsub", action="store_true", help="Burn subtitles")
     p.add_argument("--title", help="Custom output title")
-    p.add_argument("--watermark", default="obrolan_clip", help="Watermark text")
+    p.add_argument("--watermark", default="basically.explained", help="Watermark text")
     p.add_argument("--bg", type=Path, help="Background image or video")
     p.add_argument(
         "--story", nargs=1, metavar="SCRIPT|AUDIO",

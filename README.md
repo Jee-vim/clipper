@@ -48,7 +48,7 @@ Vertical (9:16) clip generator from url, video, or audio input.
 | `--crop left\|center\|right` | Crop horizontal position | `--crop center` |
 | `--hardsub` | Generate and embed subtitles | `--hardsub` |
 | `--title TEXT` | Custom output title | `--title "ep1"` |
-| `--watermark TEXT` | Watermark text (default: `obrolan_clip`) | `--watermark "mytext"` |
+| `--watermark TEXT` | Watermark text (default: `basically.explained`) | `--watermark "mytext"` |
 | `--bg PATH` | Image/video background | `--bg input/bg.jpg` |
 | `--story SCRIPT` | TTS audio from a script (output `<script>.mp3`) | `--story script.txt` |
 | `--story AUDIO` | Use audio directly, extract transcript | `--story podcast.mp3` |
