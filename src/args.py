@@ -16,7 +16,7 @@ class Options:
     crop: str = ""
     hardsub: bool = False
     title: str = ""
-    watermark: str = "obrolan_clip"
+    watermark: str = "basically.explained"
     bg: Path | None = None
     story: list[str] | None = None
     topic: str = ""
