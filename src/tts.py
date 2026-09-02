@@ -253,9 +253,6 @@ def generate_story(
         log("ERROR", f"Input file not found: {script}")
         raise SystemExit(1)
 
-    if not ref_a and not ref_b:
-        log("WARN", "No reference clips given: both speakers use the default voice")
-
     log("INFO", f"Loading Chatterbox on device={device}")
     model = ChatterboxTTS.from_pretrained(device=device)
     sr = model.sr
